@@ -1,0 +1,43 @@
+﻿version: '3.8'
+
+services:
+
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: landprice_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: landprice
+      POSTGRES_USER: landuser
+      POSTGRES_PASSWORD: landpass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - landnet
+
+  geoserver:
+    image: kartoza/geoserver:2.23.0
+    container_name: landprice_geo
+    restart: unless-stopped
+    environment:
+      GEOSERVER_ADMIN_USER: admin
+      GEOSERVER_ADMIN_PASSWORD: geoserver
+    ports:
+      - "8080:8080"
+    volumes:
+      - geoserver_data:/opt/geoserver/data_dir
+    depends_on:
+      - postgres
+    networks:
+      - landnet
+
+volumes:
+  postgres_data:
+  geoserver_data:
+
+networks:
+  landnet:
+    driver: bridge
