@@ -22,6 +22,17 @@ Do đặc thù cơ chế phân quyền bảo mật của hệ điều hành Wind
 ### 🔹 Đợt 2: Nạp và Chuẩn hóa dữ liệu thuộc tính (CSV)
 1. Bản chất lệnh `COPY` trong lõi PostgreSQL yêu cầu đường dẫn tuyệt đối sạch. Thực hiện chạy khối lệnh ở **BƯỚC 4** trong file `schema.sql`.
 > *Lưu ý kỹ thuật:* Đảm bảo đường dẫn tệp CSV trong đoạn code `FROM '-/-/data/...'` trỏ chính xác đến vị trí lưu trữ trên máy của bạn và không chứa ký tự ẩn của Windows Explorer. Nếu dính lỗi phân quyền, cấp quyền truy cập `Everyone` cho thư mục chứa file.
+> Gợi ý lệnh để thực hiện dễ dàng hơn: (chỉ cần copy và dán đường dẫn mới)
+-- Lệnh nạp file 2015-2019 
+COPY tmp_gia_2015_2019(NamApDung, QuanHuyen, STT, TenDuong, Phuong, TuDiem, DenDiem, GiaDat2015_2019) 
+FROM '-/-/data/GiaDat2015_2019.csv' 
+WITH (FORMAT csv, DELIMITER ',', HEADER, QUOTE '"');
+
+-- Lệnh nạp file 2020-2025 
+COPY tmp_gia_2020_2025(STT, TenDuong, Phuong, TuDiem, DenDiem, GiaDieuChinh, QuanHuyen) 
+FROM '-/-/data/GiaDat2020_2025.csv' 
+WITH (FORMAT csv, DELIMITER ',', HEADER, QUOTE '"');
+
 2. Chạy tiếp lệnh `INSERT INTO ... SELECT` ở cuối **BƯỚC 4** để hệ thống tự động chuẩn hóa chuỗi, loại bỏ khoảng trắng thừa (`TRIM`) và gộp dữ liệu giá đất 2 giai đoạn lại với nhau.
 
 ### 🔹 Đợt 3: Đồng bộ thực thể không gian (Shapefile) & Kích hoạt API
