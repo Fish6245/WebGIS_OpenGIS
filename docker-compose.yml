@@ -17,6 +17,11 @@ services:
       - ./postgres/init:/docker-entrypoint-initdb.d
     networks:
       - landnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U landuser -d landprice"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   geoserver:
     image: kartoza/geoserver:2.23.0
@@ -30,7 +35,22 @@ services:
     volumes:
       - geoserver_data:/opt/geoserver/data_dir
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - landnet
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: landprice_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - landnet
 
