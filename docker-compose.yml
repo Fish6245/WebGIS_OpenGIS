@@ -22,6 +22,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   geoserver:
     image: kartoza/geoserver:2.23.0
@@ -39,6 +44,11 @@ services:
         condition: service_healthy
     networks:
       - landnet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
@@ -53,6 +63,11 @@ services:
         condition: service_healthy
     networks:
       - landnet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
