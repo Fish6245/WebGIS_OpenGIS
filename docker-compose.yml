@@ -69,6 +69,20 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  nginx:
+    image: nginx:alpine
+    container_name: landprice_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - geoserver
+    networks:
+      - landnet
+
 volumes:
   postgres_data:
   geoserver_data:
