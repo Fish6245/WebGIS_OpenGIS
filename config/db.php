@@ -1,7 +1,7 @@
 <?php
 $host = 'localhost';
 $port = '5433';          //  THAY SỐ NÀY bằng số Port của bạn
-$db   = 'webgis_db';     
+$db   = 'webgis_db';     //  'ten_database_cua_ban'
 $user = 'postgres';      
 $pass = '123456';        // Mật khẩu postgres của bạn
 
