@@ -82,8 +82,6 @@ FULL OUTER JOIN tmp_gia_2015_2019 t15
 
 -- -------------------------------------------------------------------------
 -- [DỪNG LẠI TẠI ĐÂY ĐỂ MỞ TOOL POSTGIS SHAPEFILE MANAGER ĐỂ IMPORT BẢN ĐỒ]
--- Thêm file .shp vào, đặt tên bảng là 'tmp_road_shape', chọn SRID '4326', Mode 'Create'
--- Sau khi Import thành công, chạy tiếp các bước bên dưới:
 -- -------------------------------------------------------------------------
 
 -- -------------------------------------------------------------------------
