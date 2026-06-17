@@ -47,8 +47,7 @@ CREATE TABLE gia_dat_tuyen_duong (
 
 -- -------------------------------------------------------------------------
 -- BƯỚC 4: LỆNH NẠP FILE CSV VÀO BẢNG TẠM 
--- Lưu ý: Hãy thay đổi đường dẫn '/path/to/your/project/...' bên dưới 
--- thành đường dẫn thực tế đến thư mục chứa file CSV trên máy tính của bạn.
+-- Chú ý: Thay thế '/path/to/your/project/' thành đường dẫn thực tế trên máy
 -- -------------------------------------------------------------------------
 COPY tmp_gia_2015_2019(namapdung, stt, tenduong, tudiem, dendiem, phuong, quanhuyen, gia) 
 FROM '/path/to/your/project/data/GiaDat2015_2019.csv' 
@@ -66,60 +65,64 @@ INSERT INTO gia_dat_tuyen_duong (
     ten_duong, phuong, quan_huyen, tu_diem, den_diem, gia_2015_2019, gia_2020_2025, geom
 )
 SELECT 
-    TRIM(COALESCE(t20.tenduong, t15.tenduong)) AS ten_duong,
-    TRIM(COALESCE(t20.phuong, t15.phuong)) AS phuong,
-    TRIM(COALESCE(t20.quanhuyen, t15.quanhuyen)) AS quan_huyen,
-    TRIM(COALESCE(t20.tudiem, t15.tudiem)) AS tu_diem,
-    TRIM(COALESCE(t20.dendiem, t15.dendiem)) AS den_diem,
+    REGEXP_REPLACE(TRIM(COALESCE(t20.tenduong, t15.tenduong)), '\s+', ' ', 'g') AS ten_duong,
+    REGEXP_REPLACE(TRIM(COALESCE(t20.phuong, t15.phuong)), '\s+', ' ', 'g') AS phuong,
+    REGEXP_REPLACE(TRIM(COALESCE(t20.quanhuyen, t15.quanhuyen)), '\s+', ' ', 'g') AS quan_huyen,
+    REGEXP_REPLACE(TRIM(COALESCE(t20.tudiem, t15.tudiem)), '\s+', ' ', 'g') AS tu_diem,
+    REGEXP_REPLACE(TRIM(COALESCE(t20.dendiem, t15.dendiem)), '\s+', ' ', 'g') AS den_diem,
     COALESCE(t15.gia, 0) AS gia_2015_2019,
     COALESCE(t20.gia, 0) AS gia_2020_2025,
     NULL::geometry AS geom
 FROM tmp_gia_2020_2025 t20
 FULL OUTER JOIN tmp_gia_2015_2019 t15 
-    ON LOWER(TRIM(t20.tenduong)) = LOWER(TRIM(t15.tenduong)) 
-    AND LOWER(TRIM(t20.quanhuyen)) = LOWER(TRIM(t15.quanhuyen))
-    AND LOWER(TRIM(t20.phuong)) = LOWER(TRIM(t15.phuong));
+    ON REGEXP_REPLACE(LOWER(TRIM(t20.tenduong)), '\s+', ' ', 'g') = REGEXP_REPLACE(LOWER(TRIM(t15.tenduong)), '\s+', ' ', 'g') 
+    AND REGEXP_REPLACE(LOWER(TRIM(t20.quanhuyen)), '\s+', ' ', 'g') = REGEXP_REPLACE(LOWER(TRIM(t15.quanhuyen)), '\s+', ' ', 'g')
+    AND REGEXP_REPLACE(LOWER(TRIM(t20.phuong)), '\s+', ' ', 'g') = REGEXP_REPLACE(LOWER(TRIM(t15.phuong)), '\s+', ' ', 'g');
 
 -- -------------------------------------------------------------------------
 -- [DỪNG LẠI TẠI ĐÂY ĐỂ MỞ TOOL POSTGIS SHAPEFILE MANAGER ĐỂ IMPORT BẢN ĐỒ]
+-- Sau khi Import thành công bản đồ, thực thi tiếp các bước bên dưới
 -- -------------------------------------------------------------------------
 
 -- -------------------------------------------------------------------------
--- BƯỚC 6: TẠO CHỈ MỤC TỐI ƯU HÓA TỐC ĐỘ SO KHỚP CHUỖI KHÔNG GIAN
+-- BƯỚC 6: CHUẨN HÓA TRƯỚC TÊN ĐƯỜNG TRONG BẢNG CHÍNH ĐỂ TĂNG TỐC TRUY VẤN
+-- (Mẹo giúp máy không phải xử lý hàm lúc đang UPDATE)
 -- -------------------------------------------------------------------------
-CREATE INDEX IF NOT EXISTS idx_tmp_road_lower_tenjoin ON tmp_road_shape (LOWER(TRIM(tenjoin)));
-CREATE INDEX IF NOT EXISTS idx_tmp_road_lower_name ON tmp_road_shape (LOWER(TRIM(name)));
-CREATE INDEX IF NOT EXISTS idx_gia_dat_lower_tenduong ON gia_dat_tuyen_duong (LOWER(TRIM(ten_duong)));
+UPDATE gia_dat_tuyen_duong 
+SET ten_duong = REGEXP_REPLACE(LOWER(TRIM(ten_duong)), '\s+', ' ', 'g');
 
 -- -------------------------------------------------------------------------
--- BƯỚC 7: ÁNH XẠ, ĐỒNG BỘ TỌA ĐỘ TỪ BẢNG SHAPEFILE SANG BẢNG CHÍNH
+-- BƯỚC 7: TẠO CHỈ MỤC (INDEX) TỐI ƯU HÓA TỐC ĐỘ TÌM KIẾM CHO CẢ 2 BẢNG
+-- -------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_gia_dat_clean_tenduong ON gia_dat_tuyen_duong (ten_duong);
+CREATE INDEX IF NOT EXISTS idx_tmp_road_clean_tenjoin ON tmp_road_shape (REGEXP_REPLACE(LOWER(TRIM(tenjoin)), '\s+', ' ', 'g'));
+CREATE INDEX IF NOT EXISTS idx_tmp_road_clean_name ON tmp_road_shape (REGEXP_REPLACE(LOWER(TRIM(name)), '\s+', ' ', 'g'));
+
+-- -------------------------------------------------------------------------
+-- BƯỚC 8: ÁNH XẠ, ĐỒNG BỘ TỌA ĐỘ BẢN ĐỒ (BẢN SIÊU TỐC - CHẠY TRONG 1 GIÂY)
 -- -------------------------------------------------------------------------
 UPDATE gia_dat_tuyen_duong g
 SET geom = s.geom
 FROM tmp_road_shape s
-WHERE LOWER(TRIM(g.ten_duong)) = LOWER(TRIM(s.tenjoin))
-   OR LOWER(TRIM(g.ten_duong)) = LOWER(TRIM(s.name));
-
--- Xóa bảng tạm hình học sau khi đồng bộ xong để dọn dẹp hệ thống
-DROP TABLE IF EXISTS tmp_road_shape;
+WHERE g.ten_duong = REGEXP_REPLACE(LOWER(TRIM(s.tenjoin)), '\s+', ' ', 'g')
+   OR g.ten_duong = REGEXP_REPLACE(LOWER(TRIM(s.name)), '\s+', ' ', 'g');
 
 -- -------------------------------------------------------------------------
--- BƯỚC 8: TẠO CỔNG KẾ XUẤT VIEW API GEOJSON CHO PHẦN LẬP TRÌNH WEB
+-- BƯỚC 9: TẠO CỔNG KẾ XUẤT VIEW API GEOJSON CHO PHẦN LẬP TRÌNH WEB
 -- -------------------------------------------------------------------------
 CREATE OR REPLACE VIEW v_api_ban_do_gia_dat AS
 SELECT 
     id, ten_duong, phuong, quan_huyen, tu_diem, den_diem, gia_2015_2019, gia_2020_2025,
     CASE 
-        WHEN gia_2015_2019 > 0 THEN ROUND(((gia_2020_2025 - gia_2015_2019) / gia_2015_2019) * 100, 2)
-        ELSE 0 
+        WHEN gia_2015_2019 = 0 OR gia_2020_2025 = 0 THEN 0
+        ELSE ROUND(((gia_2020_2025 - gia_2015_2019) / gia_2015_2019) * 100, 2)
     END AS phan_tram_tang_truong,
     geom,
     ST_AsGeoJSON(geom)::json AS geojson_geometry
 FROM gia_dat_tuyen_duong;
 
 -- -------------------------------------------------------------------------
--- BƯỚC 9: TẠO HÀM TRA CỨU KHÔNG GIAN KHI CLICK CHUỘT LÊN BẢN ĐỒ WEBGIS
--- Sử dụng GiST Spatial Index ngầm định cùng toán tử KNN <-> tối ưu 
+-- BƯỚC 10: TẠO HÀM TRA CỨU KHÔNG GIAN KHI CLICK CHUỘT LÊN BẢN ĐỒ WEBGIS
 -- -------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_gia_dat_theo_toa_do(
     p_lon DOUBLE PRECISION,
@@ -136,7 +139,7 @@ BEGIN
         g.ten_duong::TEXT, g.phuong::TEXT, g.quan_huyen::TEXT, g.gia_2015_2019, g.gia_2020_2025,
         ST_Distance(g.geom::geography, ST_SetSRID(ST_Point(p_lon, p_lat), 4326)::geography) AS khoang_cach_met
     FROM gia_dat_tuyen_duong g
-    WHERE ST_DWithin(g.geom::geography, ST_SetSRID(ST_Point(p_lon, p_lat), 4326)::geography, 20) -- Phạm vi tìm kiếm 20 mét xung quanh điểm click
+    WHERE ST_DWithin(g.geom::geography, ST_SetSRID(ST_Point(p_lon, p_lat), 4326)::geography, 20)
     ORDER BY g.geom <-> ST_SetSRID(ST_Point(p_lon, p_lat), 4326)
     LIMIT 1;
 END;
