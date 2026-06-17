@@ -113,6 +113,7 @@ SELECT
         WHEN gia_2015_2019 > 0 THEN ROUND(((gia_2020_2025 - gia_2015_2019) / gia_2015_2019) * 100, 2)
         ELSE 0 
     END AS phan_tram_tang_truong,
+    geom,
     ST_AsGeoJSON(geom)::json AS geojson_geometry
 FROM gia_dat_tuyen_duong;
 
