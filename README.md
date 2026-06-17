@@ -22,7 +22,7 @@ Do đặc thù cơ chế phân quyền bảo mật của hệ điều hành Wind
 ### 🔹 Đợt 2: Nạp và Chuẩn hóa dữ liệu thuộc tính (CSV)
 1. Bản chất lệnh `COPY` trong lõi PostgreSQL yêu cầu đường dẫn tuyệt đối sạch. Thực hiện chạy khối lệnh ở **BƯỚC 4** trong file `schema.sql`.
 > *Lưu ý kỹ thuật:* Đảm bảo đường dẫn tệp CSV trong đoạn code `FROM '-/-/data/...'` trỏ chính xác đến vị trí lưu trữ trên máy của bạn và không chứa ký tự ẩn của Windows Explorer. Nếu dính lỗi phân quyền, cấp quyền truy cập `Everyone` cho thư mục chứa file.
-2. Chạy tiếp toàn bộ lệnh `INSERT INTO ... SELECT` ở BƯỚC 5 để hệ thống tự động đồng bộ chuỗi chữ thường (LOWER), loại bỏ khoảng trắng thừa (TRIM) và gộp dữ liệu giá đất 2 giai đoạn lại với nhau dựa trên 3 điều kiện ràng buộc chặt chẽ: Tên đường, Quận huyện và Phường xã.
+2. Chạy tiếp lệnh gộp ở BƯỚC 5. Hệ thống sử dụng hàm `FULL OUTER JOIN` kết hợp biểu thức chính quy `REGEXP_REPLACE` để tự động dọn dẹp khoảng trắng thừa ở đầu, cuối và cả ở giữa chữ. Dữ liệu sẽ được so khớp theo 3 điều kiện: Tên đường, Quận huyện, Phường xã, đảm bảo tính toán phần trăm tăng trưởng không bị lỗi.
 
 ### 🔹 Đợt 3: Đồng bộ thực thể không gian (Shapefile) & Kích hoạt API
 1. Khởi động phần mềm **PostGIS Shapefile Import/Export Manager**, kết nối tới database vừa tạo (vd:`map_db`).
@@ -33,10 +33,9 @@ Do đặc thù cơ chế phân quyền bảo mật của hệ điều hành Wind
    * **Table**: Điền chính xác là `tmp_road_shape`.
    * **Mode**: Chọn `Create`.
 5. Bấm **Import** và đợi thông báo thành công.
-6. Quay lại **Query Tool** trên pgAdmin, thực thi toàn bộ các câu lệnh còn lại **BƯỚC 6 đến BƯỚC 9** nhằm:
-   * Tạo chỉ mục tối ưu hóa tốc độ so khớp (`INDEX`).
-   * Ánh xạ, bắn tọa độ hình học không gian vào bảng dữ liệu gốc dựa trên thuật toán so khớp chuỗi chữ thường (`LOWER(TRIM())`).
-   * Tự động xóa dọn dẹp bảng tạm hình học để giải phóng tài nguyên đĩa cứng.
-   * Biên dịch View API GeoJSON (`v_api_ban_do_gia_dat`) và Stored Procedure tra cứu tọa độ click chuột (`get_gia_dat_theo_toa_do`).
+6. Quay lại Query Tool trên pgAdmin, thực thi toàn bộ các câu lệnh còn lại từ BƯỚC 6 đến BƯỚC 10 (Bản cập nhật siêu tốc):
+   * Bước 6 & 7: Làm sạch trước tên đường ở bảng chính và tạo `INDEX` để máy không bị đơ/treo.
+   * Bước 8: Chạy lệnh `UPDATE` bắn tọa độ bản đồ sang bảng chính chỉ trong vòng 1 giây.
+   * Bước 9 & 10: Biên dịch View API GeoJSON (`v_api_ban_do_gia_dat`) và Hàm click chuột chọn đường (`get_gia_dat_theo_toa_do`).
 
 ---
